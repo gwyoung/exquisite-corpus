@@ -77,6 +77,24 @@ Configured in [`lib/auth.ts`](lib/auth.ts). Better Auth's endpoints are mounted 
 - **Handles:** every user has a unique handle (Better Auth's username plugin): 3–30 characters, letters/numbers/`_`/`.`, unique regardless of capitalization. The handle is the only public identity in the app. Better Auth's required `name` field is always kept equal to the handle by database hooks in `lib/auth.ts`.
 - **Allowed hosts:** Better Auth only accepts requests on `localhost:3000` and `exquisite-corpus*.vercel.app` (production and previews). If the app gets a custom domain, or the Vercel project URL doesn't start with `exquisite-corpus`, add it to `baseURL.allowedHosts` in `lib/auth.ts`.
 
+## Testing
+
+| Command | What it does |
+| --- | --- |
+| `npm test` | Runs everything once. |
+| `npm run test:unit` | Runs only the unit tests (`lib/utils/`), which need no database. |
+
+Tests use [Vitest](https://vitest.dev) and sit next to the code they cover as `*.test.ts`. The repository tests run against real Postgres, because the game rules are enforced in SQL: a Neon branch named `test`, kept separate from `dev` because the tests erase everything in it. Don't run two `npm test` at the same time. Pending migrations are applied to it before each run.
+
+**One-time setup:**
+
+1. In the Neon console, create a branch named `test` from `main`, with auto-delete set to **Never**.
+2. Create `.env.test.local` (git-ignored) with the `test` branch's connection strings: pooling **on** → `DATABASE_URL`, pooling **off** → `DATABASE_URL_UNPOOLED`.
+3. **Before running anything, check in the Neon console that the endpoint (`ep-…`) in both strings belongs to the `test` branch.** The tests can't recognize a production database that has no accounts in it.
+4. Run `npm test`. If the branch has real accounts copied from production, the tests refuse to run and print a `RESET_TEST_DB=… npm test` command that erases the copy. This is only needed once.
+
+The tests also refuse to run if `.env.test.local` points at the same database as `.env.local`.
+
 ## Hosting and database setup
 
 This is a record of the one-time setup that has been done for hosting and the database, in case it ever needs to be redone or checked.
