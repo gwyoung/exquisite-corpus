@@ -9,7 +9,7 @@ import {
   passwordRequirements,
   USERNAME_MAX_LENGTH,
   usernameRequirements,
-} from "@/lib/validation";
+} from "@/lib/utils/validation";
 
 const initialState: AuthFormState = {};
 

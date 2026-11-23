@@ -1,4 +1,4 @@
-import type { Requirement } from "@/lib/validation";
+import type { Requirement } from "@/lib/utils/validation";
 
 type Props = {
   id: string;

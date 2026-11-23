@@ -17,20 +17,24 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Required by Better Auth. The public identity in the app is the username below.
   name            String
-  email           String    @unique
-  emailVerified   Boolean   @default(false)
+  email           String     @unique
+  emailVerified   Boolean    @default(false)
   image           String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @default(now()) @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @default(now()) @updatedAt
   /// Unique handle (username plugin), stored lowercased.
-  username        String?   @unique
+  username        String?    @unique
   /// The handle as the user typed it, preserving capitalization.
   displayUsername String?
   sessions        Session[]
   accounts        Account[]
+  lines           Line[]
+  views           View[]
+  favorites       Favorite[]
+  lockedPoems     Poem[]
 
   @@map("user")
 }
@@ -81,4 +85,77 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// Poem tables
+//
+// Deleting a user keeps their lines and views but clears the user from them
+// (anonymized), and deletes their favorites.
+// ---------------------------------------------------------------------------
+
+model Poem {
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Unused for now; reserved for letting the starter title a finished poem.
+  title          String?
+  createdAt      DateTime   @default(now()) @db.Timestamptz(3)
+  /// Null while the poem is in progress. Only completed poems are visible.
+  completedAt    DateTime?  @db.Timestamptz(3)
+  /// The user who has the poem checked out to add a line. Only counts until
+  /// lockExpiresAt; an expired lock is the same as no lock.
+  lockedByUserId String?    @db.Uuid
+  lockExpiresAt  DateTime?  @db.Timestamptz(3)
+  lockedByUser   User?      @relation(fields: [lockedByUserId], references: [id], onDelete: SetNull)
+  lines          Line[]
+  views          View[]
+  favorites      Favorite[]
+
+  @@index([completedAt])
+  @@index([lockedByUserId])
+  @@map("poem")
+}
+
+model Line {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poemId    String   @db.Uuid
+  /// Null once the author deletes their account.
+  userId    String?  @db.Uuid
+  text      String   @db.VarChar(500)
+  /// Determines line order, so lines are inserted with SQL that leaves this to
+  /// Postgres's clock (Prisma's create would use the app server's).
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  poem      Poem     @relation(fields: [poemId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([poemId, createdAt])
+  @@index([userId])
+  @@map("line")
+}
+
+/// One row per page load of a completed poem.
+model View {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poemId    String   @db.Uuid
+  /// Null for signed-out visitors and deleted accounts.
+  userId    String?  @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  poem      Poem     @relation(fields: [poemId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([poemId])
+  @@index([userId])
+  @@map("view")
+}
+
+model Favorite {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  poemId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poem      Poem     @relation(fields: [poemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, poemId])
+  @@index([poemId])
+  @@map("favorite")
 }
