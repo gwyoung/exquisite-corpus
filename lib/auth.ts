@@ -11,7 +11,7 @@ import {
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
   USERNAME_PATTERN,
-} from "@/lib/validation";
+} from "@/lib/utils/validation";
 
 const badRequest = (message: string) => new APIError("BAD_REQUEST", { message });
 

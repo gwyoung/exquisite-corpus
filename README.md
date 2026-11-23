@@ -63,13 +63,17 @@ The schema lives in [`prisma/schema.prisma`](prisma/schema.prisma), and migratio
 
 **Better Auth tables** (`user`, `session`, `account`, `verification`) are written by hand in the schema to match what Better Auth 1.7 expects. IDs are Postgres-generated UUIDs. The `user` table also has `username` (unique, lowercased) and `displayUsername` (original capitalization) from Better Auth's [username plugin](https://www.better-auth.com/docs/plugins/username), which gives every user a unique handle. If a Better Auth upgrade or a new Better Auth plugin needs new columns, add them to the schema and run `npm run db:migrate`. Better Auth checks the schema at runtime and reports anything missing.
 
+**Poem tables** (`poem`, `line`, `view`, `favorite`): a poem is in progress until `completedAt` is set, and its lines are ordered by `createdAt`. Deleting a user keeps their lines and views but anonymizes them, and deletes their favorites.
+
+**Repositories** ([`lib/repositories/`](lib/repositories/)) hold the data access, split by what changes together: each poem-related table is written by exactly one repository, and lines belong to the poem repository. They take user ids as parameters, so callers (Server Actions and pages) must get the id from the session, never from form input. Game rules, including the 5-minute checkout lock, are enforced there in SQL.
+
 ## Authentication
 
 Configured in [`lib/auth.ts`](lib/auth.ts). Better Auth's endpoints are mounted at `/api/auth/*` by [`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts).
 
 - **Sign-in methods:** email + password, or username + password. Google and magic links are planned for later.
 - **Pages:** `/login` has the sign-in and sign-up forms ([`app/login/`](app/login/)), which submit to Server Actions in [`lib/auth-actions.ts`](lib/auth-actions.ts). Pages read the signed-in user through `getCurrentUser()` in [`lib/session.ts`](lib/session.ts). Because Cache Components is on, any component that calls it must render inside a `<Suspense>` boundary.
-- **Password rules:** 8–128 characters, with no required mix of character types, following current guidance that length matters more than composition. Username and password rules live in [`lib/validation.ts`](lib/validation.ts), shared by the sign-up form's live checklist and Better Auth's server-side checks.
+- **Password rules:** 8–128 characters, with no required mix of character types, following current guidance that length matters more than composition. Username and password rules live in [`lib/utils/validation.ts`](lib/utils/validation.ts), shared by the sign-up form's live checklist and Better Auth's server-side checks.
 - **Handles:** every user has a unique handle (Better Auth's username plugin): 3–30 characters, letters/numbers/`_`/`.`, unique regardless of capitalization. The handle is the only public identity in the app. Better Auth's required `name` field is always kept equal to the handle by database hooks in `lib/auth.ts`.
 - **Allowed hosts:** Better Auth only accepts requests on `localhost:3000` and `exquisite-corpus*.vercel.app` (production and previews). If the app gets a custom domain, or the Vercel project URL doesn't start with `exquisite-corpus`, add it to `baseURL.allowedHosts` in `lib/auth.ts`.
 
