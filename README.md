@@ -68,6 +68,8 @@ The schema lives in [`prisma/schema.prisma`](prisma/schema.prisma), and migratio
 Configured in [`lib/auth.ts`](lib/auth.ts). Better Auth's endpoints are mounted at `/api/auth/*` by [`app/api/auth/[...all]/route.ts`](app/api/auth/[...all]/route.ts).
 
 - **Sign-in methods:** email + password, or username + password. Google and magic links are planned for later.
+- **Pages:** `/login` has the sign-in and sign-up forms ([`app/login/`](app/login/)), which submit to Server Actions in [`lib/auth-actions.ts`](lib/auth-actions.ts). Pages read the signed-in user through `getCurrentUser()` in [`lib/session.ts`](lib/session.ts). Because Cache Components is on, any component that calls it must render inside a `<Suspense>` boundary.
+- **Password rules:** 8–128 characters, with no required mix of character types, following current guidance that length matters more than composition. Username and password rules live in [`lib/validation.ts`](lib/validation.ts), shared by the sign-up form's live checklist and Better Auth's server-side checks.
 - **Handles:** every user has a unique handle (Better Auth's username plugin): 3–30 characters, letters/numbers/`_`/`.`, unique regardless of capitalization. The handle is the only public identity in the app. Better Auth's required `name` field is always kept equal to the handle by database hooks in `lib/auth.ts`.
 - **Allowed hosts:** Better Auth only accepts requests on `localhost:3000` and `exquisite-corpus*.vercel.app` (production and previews). If the app gets a custom domain, or the Vercel project URL doesn't start with `exquisite-corpus`, add it to `baseURL.allowedHosts` in `lib/auth.ts`.
 
@@ -88,7 +90,7 @@ This is a record of the one-time setup that has been done for hosting and the da
    - Region: US East (N. Virginia), `us-east-1`, which matches Vercel's default function region (`iad1`) so database queries stay fast.
    - Leave the **Auth** option ("built-in authentication for app users") **unchecked**. That's Neon's managed auth service; this app runs Better Auth itself.
 2. Connect it to the project for all environments, with these options:
-   - **Create database branch for deployment:** check **Preview**, leave **Production** unchecked. Each preview deployment then gets its own Neon branch copied from production, so testing never touches real data. Production always uses the main database. Preview branches count toward the free plan's branch limit, so delete old ones in the Neon console if they pile up.
+   - **Create database branch for deployment:** check **Preview**, leave **Production** unchecked. Each preview deployment then gets its own Neon branch copied from production, so testing never touches real data. Production always uses the main database. Preview branches count toward the free plan's branch limit. The integration deletes a preview's Neon branch once its Git branch is deleted (e.g. after merging a PR). If any are ever left behind, delete them in the Neon console.
    - **Custom Prefix:** `DATABASE` (instead of the default `STORAGE`), so the variables are named `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and so on.
 
    Vercel adds these variables to the project's environment variables automatically.
