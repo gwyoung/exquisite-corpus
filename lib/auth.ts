@@ -1,9 +1,17 @@
+import "server-only";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { username } from "better-auth/plugins";
 import { prisma } from "@/lib/prisma";
+import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
+  USERNAME_PATTERN,
+} from "@/lib/validation";
 
 const badRequest = (message: string) => new APIError("BAD_REQUEST", { message });
 
@@ -39,6 +47,9 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    // Length-only rules, no "must contain a symbol" style composition rules.
+    minPasswordLength: PASSWORD_MIN_LENGTH,
+    maxPasswordLength: PASSWORD_MAX_LENGTH,
   },
   databaseHooks: {
     user: {
@@ -69,9 +80,13 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    // Unique user handles. Defaults: 3–30 chars, letters/numbers/_/. only,
-    // stored lowercased in `username`, original casing kept in `displayUsername`.
-    username(),
+    // Unique user handles, stored lowercased in `username`, original casing
+    // kept in `displayUsername`. Rules are shared with the sign-up form.
+    username({
+      minUsernameLength: USERNAME_MIN_LENGTH,
+      maxUsernameLength: USERNAME_MAX_LENGTH,
+      usernameValidator: (value) => USERNAME_PATTERN.test(value),
+    }),
     // Lets server actions that call auth.api set session cookies. Must be last.
     nextCookies(),
   ],
